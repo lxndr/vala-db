@@ -39,7 +39,7 @@ public abstract class Entity : Object {
 		}
 
 		unowned string tbl_name = db_table ();
-		if (!db.get_query (@"$(tbl_name)-delete", out query, null)) {
+		if (!db.get_query (@"$(tbl_name)-delete", out query)) {
 			var builder = new DB.QueryBuilder ();
 			builder.delete (tbl_name);
 			foreach (unowned string prop_name in db_keys ())
@@ -56,7 +56,7 @@ public abstract class Entity : Object {
 		DB.Query query;
 
 		unowned string tbl_name = db_table ();
-		if (!db.get_query (@"$(tbl_name)-replace", out query, null)) {
+		if (!db.get_query (@"$(tbl_name)-replace", out query)) {
 			var sb = new StringBuilder ();
 			foreach (unowned string prop_name in db_keys ())
 				sb.append_printf (":%s:, ", prop_name);

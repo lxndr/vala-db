@@ -89,9 +89,7 @@ public abstract class Database : Object {
 
 
 
-	public bool get_query (string name, out Query query, out QueryBuilder builder) {
-		builder = new QueryBuilder ();
-
+	public bool get_query (string name, out Query query) {
 		query = query_list[name];
 		if (query == null) {
 			query = new_query ();

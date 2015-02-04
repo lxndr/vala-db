@@ -39,7 +39,7 @@ public abstract class SimpleEntity : Entity {
 		DB.Query query;
 
 		if (id == 0) {
-			if (!db.get_query (@"$(tbl_name)-insert", out query, null)) {
+			if (!db.get_query (@"$(tbl_name)-insert", out query)) {
 				var sb = new StringBuilder ();
 				foreach (unowned string prop_name in db_fields ())
 					sb.append_printf (":%s:, ", prop_name);
@@ -51,7 +51,7 @@ public abstract class SimpleEntity : Entity {
 			query.exec ();
 			id = db.last_insert_rowid ();
 		} else {
-			if (!db.get_query (@"$(tbl_name)-update", out query, null)) {
+			if (!db.get_query (@"$(tbl_name)-update", out query)) {
 				var sb = new StringBuilder ();
 				foreach (unowned string prop_name in db_fields ())
 					sb.append_printf ("%s = :%s:, ", prop_name, prop_name);
