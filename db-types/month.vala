@@ -164,6 +164,28 @@ public class Month {
 	public string format () {
 		return "%s %u".printf (month_name (), year);
 	}
+
+
+	/* value adapter */
+	public static bool string_to_value (ref Value v, string? s) {
+		if (unlikely (s == null))
+			return true;
+
+		int result = int.parse (s);
+		var month = new Month.from_raw_value (result);
+		v.set_instance (month);
+		return true;
+	}
+
+
+	public static bool value_to_string (out string? s, ref Value v) {
+		var month = (Month) v.peek_pointer ();
+		if (month == null)
+			s = null;
+		else
+			s = month.raw_value.to_string ();
+		return true;
+	}
 }
 
 

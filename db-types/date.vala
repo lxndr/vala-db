@@ -120,6 +120,28 @@ public class Date {
 
 		return null;
 	}
+
+
+	/* value adapter */
+	public static bool string_to_value (ref Value v, string? s) {
+		if (s == null)
+			return true;
+
+		int result = int.parse (s);
+		var date = new Date.from_days (result);
+		v.set_instance (date);
+		return true;		
+	}
+
+
+	public static bool value_to_string (out string? s, ref Value v) {
+		var date = (Date) v.peek_pointer ();
+		if (date == null)
+			s = null;
+		else
+			s = date.get_days ().to_string ();
+		return true;
+	}
 }
 
 
