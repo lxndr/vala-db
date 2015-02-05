@@ -107,7 +107,7 @@ public abstract class Query : Object {
 				string? s;
 				var v = Value (typeof (T));
 				v.set_instance (val);
-				if (db.value_adapter.convert_to (null, null, ref v, out s))
+				if (db.value_adapter.convert_to (out s, ref v, null, null))
 					native_bind_text (index, s);
 				else
 					error ("Could not bind query parameter '%s', of type '%s'", name, type.name ());
@@ -154,7 +154,7 @@ public abstract class Query : Object {
 			native_bind_int (index, ((SimpleEntity) val.get_object ()).id);
 		else {
 			string? s;
-			if (db.value_adapter.convert_to (null, null, ref val, out s))
+			if (db.value_adapter.convert_to (out s, ref val, null, null))
 				native_bind_text (index, s);
 			else
 				error ("Could not bind query parameter of type '%s'", type.name ());
@@ -398,7 +398,7 @@ public abstract class Query : Object {
 		}
 
 		/* Adapter */
-		if (db.value_adapter.convert_from (null, null, str, ref val))
+		if (db.value_adapter.convert_from (ref val, str, null, null))
 			return true;
 
 		/* GLib transformer */

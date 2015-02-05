@@ -17,8 +17,8 @@
 namespace DB {
 
 
-public delegate bool ValueAdapterFromFunc (string? s, ref Value v);
-public delegate bool ValueAdapterToFunc (ref Value v, out string? s);
+public delegate bool ValueAdapterFromFunc (ref Value v, string? s);
+public delegate bool ValueAdapterToFunc (out string? s, ref Value v);
 
 
 private struct Adapter {
@@ -56,18 +56,18 @@ public class ValueAdapter {
 	}
 
 
-	public bool convert_from (string? table, string? column, string? s, ref Value v) {
+	public bool convert_from (ref Value v, string? s, string? table, string? column) {
 		var spec = find_spec (v.type (), table, column);
 		if (unlikely (spec == null))
 			return false;
-		return spec.from_func (s, ref v);
+		return spec.from_func (ref v, s);
 	}
 
 
-	public bool convert_to (string? table, string? column, ref Value v, out string? s) {
+	public bool convert_to (out string? s, ref Value v, string? table, string? column) {
 		var spec = find_spec (v.type (), table, column);
 		if (spec != null)
-			return spec.to_func (ref v, out s);
+			return spec.to_func (out s, ref v);
 		s = null;
 		return false;
 	}
