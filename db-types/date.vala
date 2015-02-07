@@ -59,8 +59,10 @@ public class Date {
 	}
 
 
-	public int get_days () {
-		return (int) date.get_julian ();
+	public void to_ymd (out DateYear year, out DateMonth month, out DateDay day) {
+		year = date.get_year ();
+		month = date.get_month ();
+		day = date.get_day ();
 	}
 
 
@@ -71,7 +73,7 @@ public class Date {
 
 
 	public int compare (Date that) {
-		return get_days () - that.get_days ();
+		return (int) date.get_julian () - (int) that.date.get_julian ();
 	}
 
 
@@ -127,8 +129,14 @@ public class Date {
 		if (s == null)
 			return true;
 
-		int result = int.parse (s);
-		var date = new Date.from_days (result);
+		var list = s.split ("-");
+		if (list.length < 3)
+			return true;
+
+		var date = new Date.from_ymd (
+				(DateYear) int.parse (list[0]),
+				(DateMonth) int.parse (list[1]),
+				(DateDay) int.parse (list[2]));
 		v.set_instance (date);
 		return true;		
 	}
@@ -138,8 +146,14 @@ public class Date {
 		var date = (Date) v.peek_pointer ();
 		if (date == null)
 			s = null;
-		else
-			s = date.get_days ().to_string ();
+		else {
+			DateYear year;
+			DateMonth month;
+			DateDay day;
+			date.to_ymd (out year, out month, out day);
+			s = "%04d-%02d-%02d".printf ((int) year, (int) month, (int) day);
+		}
+
 		return true;
 	}
 }
