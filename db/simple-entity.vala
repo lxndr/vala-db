@@ -54,7 +54,7 @@ public abstract class SimpleEntity : Entity {
 			if (!db.get_query (@"$(tbl_name)-update", out query)) {
 				var sb = new StringBuilder ();
 				foreach (unowned string prop_name in db_fields ())
-					sb.append_printf ("%s = :%s:, ", prop_name, prop_name);
+					sb.append_printf ("`%s` = :%s:, ", prop_name, prop_name);
 				sb.truncate (sb.len - 2);
 				query.prepare (@"UPDATE `$(tbl_name)` SET $(sb.str) WHERE id = :id:");
 			}
