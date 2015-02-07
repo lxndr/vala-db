@@ -135,17 +135,20 @@ public abstract class Database : Object {
 	 *	Transaction control.
 	 */
 	public void begin_transaction () throws Error {
-		new_query ().prepare ("BEGIN TRANSACTION").exec ();
+		var query = new_query ();
+		query.prepare ("BEGIN TRANSACTION").exec ();
 	}
 
 
 	public void commit_transaction () throws Error {
-		new_query ().prepare ("COMMIT TRANSACTION").exec ();
+		var query = new_query ();
+		query.prepare ("COMMIT TRANSACTION").exec ();
 	}
 
 
 	public void rollback_transaction () throws Error {
-		new_query ().prepare ("ROLLBACK TRANSACTION").exec ();
+		var query = new_query ();
+		query.prepare ("ROLLBACK TRANSACTION").exec ();
 	}
 }
 
