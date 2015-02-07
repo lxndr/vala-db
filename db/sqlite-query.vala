@@ -45,8 +45,14 @@ public class SqliteQuery : Query {
 
 
 	protected override unowned string[]? native_next () throws Error {
-		if (native.step () != Sqlite.ROW)
+		int ret = native.step ();
+		if (ret == Sqlite.DONE) {
+			native.reset ();
 			return null;
+		}
+
+		if (ret != Sqlite.ROW)
+			throw new Error.NATIVE (((SqliteDatabase) db).native ().errmsg ());
 
 		var count = columns.size;
 		if (count == 0)

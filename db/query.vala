@@ -205,7 +205,6 @@ public abstract class Query : Object {
 			list.add (make_entity_full (type, values));
 		}
 
-		native_reset ();
 		return list;
 	}
 
@@ -254,7 +253,6 @@ public abstract class Query : Object {
 			list.add (wrap_value<T> (ref val));
 		}
 
-		native_reset ();
 		return list;
 	}
 
@@ -285,7 +283,6 @@ public abstract class Query : Object {
 			map[key] = val;
 		}
 
-		native_reset ();
 		return map;
 	}
 
@@ -308,7 +305,6 @@ public abstract class Query : Object {
 			map[key] = val;
 		}
 
-		native_reset ();
 		return map;
 	}
 
