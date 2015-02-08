@@ -150,9 +150,13 @@ public abstract class Query : Object {
 			native_bind_double (index, (double) val.get_double ());
 		else if (type == typeof (string))
 			native_bind_text (index, val.get_string ());
-		else if (type.is_a (typeof (SimpleEntity)))
-			native_bind_int (index, ((SimpleEntity) val.get_object ()).id);
-		else {
+		else if (type.is_a (typeof (SimpleEntity))) {
+			var entity = (SimpleEntity) val.get_object ();
+			if (entity != null)
+				native_bind_int (index, entity.id);
+			else
+				native_bind_text (index, null);
+		} else {
 			string? s;
 			if (db.value_adapter.convert_to (out s, ref val, null, null))
 				native_bind_text (index, s);
