@@ -59,7 +59,7 @@ public abstract class ViewTable : Gtk.TreeView {
 	}
 
 
-	protected virtual Entity? new_entity () {
+	protected virtual Entity? new_entity () throws DB.Error {
 		return Object.new (object_type, db: this.db) as Entity;
 	}
 
