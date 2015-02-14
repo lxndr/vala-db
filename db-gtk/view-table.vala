@@ -34,9 +34,7 @@ public abstract class ViewTable : Gtk.TreeView {
 		set { _set_read_only (value); }
 		default = false;
 	}
-	
 
-	public Entity? selected_entity;
 
 	protected Gtk.ListStore list_store;
 	protected Gtk.Menu? menu;
@@ -59,18 +57,32 @@ public abstract class ViewTable : Gtk.TreeView {
 	}
 
 
-	protected virtual Entity? new_entity () throws DB.Error {
+	protected virtual Entity? new_entity () throws Error {
 		return Object.new (object_type, db: this.db) as Entity;
 	}
 
 
-	protected virtual void remove_entity (Entity entity) throws DB.Error {
+	protected virtual void remove_entity (Entity entity) throws Error {
 		entity.remove ();
 	}
 
 
-	public unowned Entity? get_selected_entity () {
-		return selected_entity;
+	public Gee.List<Entity> get_selected_entities () {
+		var list = new Gee.ArrayList<Entity> ();
+
+		var rows = get_selection ().get_selected_rows (null);
+		unowned List<Gtk.TreePath> irow = rows;
+		while (irow != null) {
+			Gtk.TreeIter iter;
+			Entity entity;
+
+			list_store.get_iter (out iter, irow.data);
+			list_store.get (iter, 0, out entity);
+			list.add (entity);
+			irow = irow.next;
+		}
+
+		return list;
 	}
 
 
@@ -116,7 +128,7 @@ public abstract class ViewTable : Gtk.TreeView {
 		this.enable_grid_lines = Gtk.TreeViewGridLines.VERTICAL;
 		this.headers_clickable = true;
 		this.get_selection ().changed.connect (list_selection_changed);
-		this.button_release_event.connect (button_released);
+		this.button_press_event.connect (button_pressed);
 	}
 
 
@@ -246,11 +258,14 @@ public abstract class ViewTable : Gtk.TreeView {
 	}
 
 
-	private bool button_released (Gdk.EventButton event) {
-		if (menu != null && event.button == 3) {
+	private bool button_pressed (Gdk.EventButton event) {
+		if (menu != null && event.triggers_context_menu () && event.type == Gdk.EventType.BUTTON_PRESS) {
+			var count = get_selection ().count_selected_rows ();
 			if (remove_menu_item != null)
-				remove_menu_item.sensitive = this.get_selection ().count_selected_rows () > 0;
+				remove_menu_item.sensitive = count > 0;
 			menu.popup (null, null, null, event.button, Gtk.get_current_event_time ());
+			if (count > 1)
+				return true;
 		}
 
 		return false;
@@ -258,12 +273,6 @@ public abstract class ViewTable : Gtk.TreeView {
 
 
 	private void list_selection_changed (Gtk.TreeSelection selection) {
-		Gtk.TreeIter iter;
-		if (selection.get_selected (null, out iter))
-			list_store.get (iter, 0, out selected_entity);
-		else
-			selected_entity = null;
-
 		selection_changed ();
 	}
 
@@ -373,31 +382,50 @@ public abstract class ViewTable : Gtk.TreeView {
 	}
 
 
-	public void remove_item_clicked () {
-		Gtk.TreeIter iter;
-		if (this.get_selection ().get_selected (null, out iter) == false)
-			return;
+	private void remove_item_clicked () {
+		unowned Gtk.Window win = (Gtk.Window) get_toplevel ();
 
-		Entity obj;
-		list_store.get (iter, 0, out obj);
-
-		var msg = new Gtk.MessageDialog (this.get_toplevel () as Gtk.Window, Gtk.DialogFlags.MODAL,
+		var dlg = new Gtk.MessageDialog (win, Gtk.DialogFlags.MODAL,
 				Gtk.MessageType.QUESTION, Gtk.ButtonsType.YES_NO,
-				_("Are you sure you want to delete '%s'?"),
-				(obj as Viewable).display_name);
-		msg.response.connect ((response_id) => {
-			if (response_id == Gtk.ResponseType.YES) {
-				try {
-					remove_entity (obj);
-					list_store.remove (iter);
-				} catch (GLib.Error e) {
-					error ("Failed to remove entity: %s", e.message);
-				}
-			}
+				_("Are you sure you want to delete selected entities?"));
+		var response = dlg.run ();
+		dlg.destroy ();
 
-			msg.destroy ();
-		});
-		msg.show ();
+		if (response == Gtk.ResponseType.YES) {
+			try {
+				remove_selected_entities ();
+			} catch (GLib.Error e) {
+				var msg = new Gtk.MessageDialog (win,
+						Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.OK,
+						_("Failed to delete selected entities from the database.\n" +
+						"Error: %s"), e.message);
+				msg.run ();
+				msg.destroy ();
+			}
+		}
+	}
+
+
+	public void remove_selected_entities () throws Error {
+		unowned Gtk.TreeSelection selection = get_selection ();
+		var row_count = selection.count_selected_rows ();
+		var rows = selection.get_selected_rows (null);
+
+		var n = 0;
+		Entity entity;
+		var tree_iters = new Gtk.TreeIter[row_count];
+
+		unowned List<Gtk.TreePath> irow = rows;
+		while (irow != null) {
+			list_store.get_iter (out tree_iters[n], irow.data);
+			list_store.get (tree_iters[n], 0, out entity);
+			entity.remove ();
+			n++;
+			irow = irow.next;
+		}
+
+		for (var i = 0; i < n; i++)
+			list_store.remove (tree_iters[i]);
 	}
 
 
