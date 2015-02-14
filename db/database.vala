@@ -21,13 +21,11 @@ public abstract class Database : Object {
 	public ValueAdapter value_adapter { get; set; }
 	private Gee.Map<Type, unowned EntitySpec> entity_types;
 	private Gee.Map<string, Query> query_list;
-	private Gee.Map<Type, Gee.HashMap<int, Entity>> cache;
 
 
 	construct {
 		entity_types = new Gee.HashMap<Type, EntitySpec> ();
 		query_list = new Gee.HashMap<string, Query> ();
-		cache = new Gee.HashMap<Type, Gee.HashMap<int, Entity>> ();
 	}
 
 
@@ -57,38 +55,6 @@ public abstract class Database : Object {
 	}
 
 
-	/*
-	 * Cache.
-	 */
-	public Entity? get_from_cache_simple (Type type, int id) {
-		var list = cache[type];
-		if (list == null)
-			return null;
-		return list[id];
-	}
-
-
-	public void set_cachable (Type type, bool cachable) {
-		if (cachable) {
-			if (cache[type] == null)
-				cache[type] = new Gee.HashMap<int, Entity> ();
-		} else {
-			cache.unset (type);
-		}
-	}
-
-
-	public void cache_entity_simple (SimpleEntity entity) {
-		var list = cache[entity.get_type ()];
-		if (list == null)
-			return;
-
-		assert (!list.has_key (entity.id));
-		list[entity.id] = entity;
-	}
-
-
-
 	public bool get_query (string name, out Query query) {
 		query = query_list[name];
 		if (query == null) {
@@ -109,10 +75,6 @@ public abstract class Database : Object {
 
 
 	public Entity? fetch_simple_entity_full (Type type, int id, string? table = null) throws Error {
-		var entity = get_from_cache_simple (type, id);
-		if (entity != null)
-			return entity;
-
 		if (table == null) {
 			unowned EntitySpec? spec = find_entity_spec (type);
 			if (spec == null)
