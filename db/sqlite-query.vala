@@ -19,7 +19,7 @@ namespace DB {
 
 public class SqliteQuery : Query {
 	private Sqlite.Statement native;
-	private string[] values;
+	private string?[] values;
 
 
 	public SqliteQuery (Database _db) {
@@ -27,7 +27,7 @@ public class SqliteQuery : Query {
 	}
 
 
-	protected override void native_prepare (string cmd) throws Error {
+	protected override void native_prepare (string cmd) throws GLib.Error {
 		unowned SqliteDatabase sqlite_db = (SqliteDatabase) db;
 		if (sqlite_db.native ().prepare_v2 (cmd, -1, out native) != Sqlite.OK)
 			throw new Error.NATIVE (sqlite_db.native ().errmsg ());
@@ -44,7 +44,7 @@ public class SqliteQuery : Query {
 	}
 
 
-	protected override unowned string[]? native_next () throws Error {
+	protected override unowned string?[]? native_next () throws GLib.Error {
 		int ret = native.step ();
 		if (ret == Sqlite.DONE) {
 			native.reset ();

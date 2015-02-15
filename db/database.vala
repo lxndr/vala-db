@@ -67,14 +67,14 @@ public abstract class Database : Object {
 	}
 
 
-	public int query_count (string from, string where) throws Error {
+	public int query_count (string from, string where) throws GLib.Error {
 		var q = new_query ();
 		q.prepare (@"SELECT COUNT(*) FROM $(from) WHERE $(where)");
 		return q.fetch_value<int> (0);
 	}
 
 
-	public Entity? fetch_simple_entity_full (Type type, int id, string? table = null) throws Error {
+	public Entity? fetch_simple_entity_full (Type type, int id, string? table = null) throws GLib.Error {
 		if (table == null) {
 			unowned EntitySpec? spec = find_entity_spec (type);
 			if (spec == null)
@@ -88,7 +88,7 @@ public abstract class Database : Object {
 	}
 
 
-	public T? fetch_simple_entity<T> (int id, string? table = null) throws Error {
+	public T? fetch_simple_entity<T> (int id, string? table = null) throws GLib.Error {
 		return fetch_simple_entity_full (typeof (T), id, table);
 	}
 
@@ -96,19 +96,19 @@ public abstract class Database : Object {
 	/*
 	 *	Transaction control.
 	 */
-	public void begin_transaction () throws Error {
+	public void begin_transaction () throws GLib.Error {
 		var query = new_query ();
 		query.prepare ("BEGIN TRANSACTION").exec ();
 	}
 
 
-	public void commit_transaction () throws Error {
+	public void commit_transaction () throws GLib.Error {
 		var query = new_query ();
 		query.prepare ("COMMIT TRANSACTION").exec ();
 	}
 
 
-	public void rollback_transaction () throws Error {
+	public void rollback_transaction () throws GLib.Error {
 		var query = new_query ();
 		query.prepare ("ROLLBACK TRANSACTION").exec ();
 	}

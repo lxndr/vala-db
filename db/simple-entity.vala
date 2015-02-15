@@ -34,7 +34,7 @@ public abstract class SimpleEntity : Entity {
 	}
 
 
-	public override void persist () throws Error {
+	public override void persist () throws GLib.Error {
 		unowned string tbl_name = db_table ();
 		DB.Query query;
 

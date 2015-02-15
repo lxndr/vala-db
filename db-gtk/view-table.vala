@@ -57,12 +57,12 @@ public abstract class ViewTable : Gtk.TreeView {
 	}
 
 
-	protected virtual Entity? new_entity () throws Error {
+	protected virtual Entity? new_entity () throws GLib.Error {
 		return Object.new (object_type, db: this.db) as Entity;
 	}
 
 
-	protected virtual void remove_entity (Entity entity) throws Error {
+	protected virtual void remove_entity (Entity entity) throws GLib.Error {
 		entity.remove ();
 	}
 
@@ -86,7 +86,7 @@ public abstract class ViewTable : Gtk.TreeView {
 	}
 
 
-	protected virtual Gee.List<Entity> get_entity_list () throws Error {
+	protected virtual Gee.List<Entity> get_entity_list () throws GLib.Error {
 		var query = db.new_query ();
 		return query.prepare_list (object_type)
 				.fetch_entity_list_full (object_type);
@@ -406,7 +406,7 @@ public abstract class ViewTable : Gtk.TreeView {
 	}
 
 
-	public void remove_selected_entities () throws Error {
+	public void remove_selected_entities () throws GLib.Error {
 		unowned Gtk.TreeSelection selection = get_selection ();
 		var row_count = selection.count_selected_rows ();
 		var rows = selection.get_selected_rows (null);
@@ -432,7 +432,7 @@ public abstract class ViewTable : Gtk.TreeView {
 	/*
 	 * This function clears table and requests new entity list to display.
 	 */
-	public void refresh_view () throws Error {
+	public void refresh_view () throws GLib.Error {
 		/* unselect to prevent emitting selection events when GTK clears the list */
 		get_selection ().unselect_all ();
 

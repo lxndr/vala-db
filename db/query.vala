@@ -17,10 +17,12 @@
 namespace DB {
 
 
-public delegate void QueryCallback (Query query, int current, int total);
+public delegate void QueryCallback (Query query, Entity entity, int number);
 
 
 public abstract class Query : Object {
+	static Regex prepare_re;
+
 	public Database db { get; construct set; }
 	private Gee.MultiMap<string, int> param_map;
 	public Gee.List<unowned string?> columns;
@@ -32,30 +34,32 @@ public abstract class Query : Object {
 	}
 
 
-	protected abstract void native_prepare (string cmd) throws Error;
+	public abstract unowned string command ();
+	protected abstract void native_prepare (string cmd) throws GLib.Error;
 	protected abstract void native_bind_text (int index, string? val);
 	protected abstract void native_bind_int (int index, int val);
 	protected abstract void native_bind_int64 (int index, int64 val);
 	protected abstract void native_bind_double (int index, double val);
-	protected abstract unowned string[]? native_next () throws Error;
+	protected abstract unowned string?[]? native_next () throws GLib.Error;
 	protected abstract void native_reset ();
 
 
-	public unowned Query prepare (string cmd) throws Error {
-		debug ("Prepare '%s'", cmd);
+	public unowned Query prepare (string cmd) throws GLib.Error {
 		string prepared;
+		int number = 0;
 
 		try {
-			int number = 0;
-			var re = new Regex (":(.+?):");
-			prepared = re.replace_eval (cmd, -1, 0, 0, (match_info, result) => {
+			if (prepare_re == null)
+				prepare_re = new Regex (":(.+?):", RegexCompileFlags.OPTIMIZE);
+
+			prepared = prepare_re.replace_eval (cmd, -1, 0, 0, (match_info, result) => {
 				param_map[match_info.fetch (1)] = number;
 				result.append_c ('?');
 				number++;
 				return false;
 			});
 		} catch (RegexError e) {
-			error ("Failed to create a regular expression: %s", e.message);
+			error ("Failed to parse command due to regexp error: %s", e.message);
 		}
 
 		native_prepare (prepared);
@@ -63,16 +67,13 @@ public abstract class Query : Object {
 	}
 
 
-	public abstract unowned string command ();
-
-
-	public unowned Query prepare_list (Type type) throws Error {
+	public unowned Query prepare_list (Type type) throws GLib.Error {
 		var table = db.find_entity_spec (type).table_name;
 		return prepare (@"SELECT * FROM `$(table)`");
 	}
 
 
-	public void exec () throws Error {
+	public void exec () throws GLib.Error {
 		debug ("Executing %s", command ());
 		native_next ();
 	}
@@ -198,27 +199,31 @@ public abstract class Query : Object {
 	 * Selection.
 	 */
 	public Gee.List<Entity> fetch_entity_list_full (Type type, QueryCallback? callback = null,
-			Cancellable? cancellable = null) throws Error {
+			Cancellable? cancellable = null) throws GLib.Error {
 		var list = new Gee.ArrayList<Entity> ();
 
 		while (!cancellable.is_cancelled ()) {
-			var values = native_next ();
+			unowned string?[]? values = native_next ();
 			if (values == null)
 				break;
 
-			list.add (make_entity_full (type, values));
+			var entity = make_entity_full (type, values);
+			list.add (entity);
+
+			if (callback != null)
+				callback (this, entity, list.size - 1);
 		}
 
 		return list;
 	}
 
 
-	public Gee.List<T> fetch_entity_list<T> (QueryCallback? callback = null, Cancellable? cancellable = null) throws Error {
+	public Gee.List<T> fetch_entity_list<T> (QueryCallback? callback = null, Cancellable? cancellable = null) throws GLib.Error {
 		return fetch_entity_list_full (typeof (T), callback);
 	}
 
 
-	public Entity? fetch_entity_full (Type type) throws Error {
+	public Entity? fetch_entity_full (Type type) throws GLib.Error {
 		var list = fetch_entity_list_full (type);
 		if (list.size > 0)
 			return list[0];
@@ -226,12 +231,12 @@ public abstract class Query : Object {
 	}
 
 
-	public T? fetch_entity<T> () throws Error {
+	public T? fetch_entity<T> () throws GLib.Error {
 		return fetch_entity_full (typeof (T));
 	}
 
 
-	public T fetch_value<T> (T def) throws Error {
+	public T fetch_value<T> (T def) throws GLib.Error {
 		var list = fetch_value_list<T> ();
 		if (list.size > 0)
 			return list[0];
@@ -243,7 +248,7 @@ public abstract class Query : Object {
 	 * @brief Fetch a list of values of type @T.
 	 * @query The query.
 	 */
-	public Gee.List<T> fetch_value_list<T> (QueryCallback? callback = null, Cancellable? cancellable = null) throws Error {
+	public Gee.List<T> fetch_value_list<T> (QueryCallback? callback = null, Cancellable? cancellable = null) throws GLib.Error {
 		var list = new Gee.ArrayList<T> ();
 
 		while (!cancellable.is_cancelled ()) {
@@ -262,7 +267,7 @@ public abstract class Query : Object {
 
 
 	public Gee.Map<K, T> fetch_entity_map<K, T> (string key_field,
-			QueryCallback? callback = null, Cancellable? cancellable = null) throws Error {
+			QueryCallback? callback = null, Cancellable? cancellable = null) throws GLib.Error {
 		int key_column = -1;
 
 		var map = new Gee.HashMap<K, T> ();
@@ -291,7 +296,7 @@ public abstract class Query : Object {
 	}
 
 
-	public Gee.Map<K, V> fetch_value_map<K, V> (QueryCallback? callback = null, Cancellable? cancellable = null) throws Error {
+	public Gee.Map<K, V> fetch_value_map<K, V> (QueryCallback? callback = null, Cancellable? cancellable = null) throws GLib.Error {
 		var map = new Gee.HashMap<K, V> ();
 		while (!cancellable.is_cancelled ()) {
 			var values = native_next ();
@@ -313,7 +318,7 @@ public abstract class Query : Object {
 	}
 
 
-	public string? fetch_string (string? def) throws Error {
+	public string? fetch_string (string? def) throws GLib.Error {
 		return fetch_value<string?> (def);
 	}
 
@@ -326,7 +331,7 @@ public abstract class Query : Object {
 	 *     - if property is string, copies it;
 	 *     - if property is something else, tries to convert it via g_value_transform.
 	 */
-	private void prepare_entity (Entity ent, string[] values) throws Error {
+	private void prepare_entity (Entity ent, string[] values) throws GLib.Error {
 		var type = ent.get_type ();
 		var obj_class = (ObjectClass) type.class_ref ();
 
@@ -348,7 +353,7 @@ public abstract class Query : Object {
 	}
 
 
-	private bool assemble_value (ref Value val, string? str) throws Error {
+	private bool assemble_value (ref Value val, string? str) throws GLib.Error {
 		var type = val.type ();
 
 		/* Entity */
@@ -414,14 +419,14 @@ public abstract class Query : Object {
 	}
 
 
-	public Entity make_entity_full (Type type, string[] values) throws Error {
+	public Entity make_entity_full (Type type, string[] values) throws GLib.Error {
 		var ent = Object.new (type, "db", db) as Entity;
 		prepare_entity (ent, values);
 		return ent;
 	}
 
 
-	public T make_entity<T> (string[] values) throws Error {
+	public T make_entity<T> (string[] values) throws GLib.Error {
 		return make_entity_full (typeof (T), values);
 	}
 }

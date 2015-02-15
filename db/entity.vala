@@ -30,7 +30,7 @@ public abstract class Entity : Object {
 	public abstract unowned string[] db_fields ();
 
 
-	public virtual void remove () throws Error {
+	public virtual void remove () throws GLib.Error {
 		DB.Query query;
 
 		if (db_keys ().length == 0) {
@@ -52,7 +52,7 @@ public abstract class Entity : Object {
 	}
 
 
-	public virtual void persist () throws Error {
+	public virtual void persist () throws GLib.Error {
 		DB.Query query;
 
 		unowned string tbl_name = db_table ();
@@ -81,56 +81,6 @@ public abstract class Entity : Object {
 			query.bind_value (prop_name, ref val);
 		}
 	}
-
-
-#if 0
-	/*
-	 * This function uses GLib Value transformator. This may not be enough.
-	 * As an option we can convert a Value to some sort of adapter type.
-	 * Or we can have internal converter.
-	 */
-	private string? prepare_sql_value (ref Value val, string prop_name) {
-		var type = val.type ();
-
-		if (val.type ().is_a (typeof (Entity))) {
-			var obj = val.get_object () as Entity;
-			if (obj == null)
-				return "NULL";
-			val = Value (typeof (int));
-			obj.get_property ("id", ref val);
-		} else if (type == typeof (bool)) {
-			if (val.get_boolean () == true)
-				return "1";
-			return "0";
-		} else if (type == typeof (double)) {
-			var d = val.get_double ();
-			char[] buf = new char[double.DTOSTR_BUF_SIZE];
-			return d.to_str (buf);
-		} else if (type == typeof (float)) {
-			var d = (double) val.get_float ();
-			char[] buf = new char[double.DTOSTR_BUF_SIZE];
-			return d.to_str (buf);
-		} else if (type == typeof (string)) {
-			unowned string s = val.get_string ();
-			if (s == null)
-				return "NULL";
-			else
-				return "'%s'".printf (escape_string (s));
-		}
-
-		string? s = null;
-		if (value_adapter.convert_to (null, prop_name, ref val, out s)) {
-			if (s == null)
-				s = "NULL";
-		} else {
-			/* try to convert to a string using GLib Value transformator */
-			var str_val = Value (typeof (string));
-			if (val.transform (ref str_val))
-				s = str_val.get_string ();
-		}
-		return s;
-	}
-#endif
 }
 
 
