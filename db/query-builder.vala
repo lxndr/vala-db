@@ -79,6 +79,12 @@ public class QueryBuilder {
 	}
 
 
+	public unowned QueryBuilder group_by (string column) {
+		sb.append_printf (" GROUP BY %s", column);
+		return this;
+	}
+
+
 	public unowned QueryBuilder order_by (string column) {
 		sb.append_printf (" ORDER BY %s", column);
 		return this;
