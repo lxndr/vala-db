@@ -36,7 +36,7 @@ public class QueryBuilder {
 
 
 	public unowned QueryBuilder delete (string table) {
-		sb.printf ("DELETE FROM %s", table);
+		sb.printf ("DELETE FROM `%s`", table);
 		return this;
 	}
 
