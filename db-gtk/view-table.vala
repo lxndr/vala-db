@@ -433,8 +433,25 @@ public abstract class ViewTable : Gtk.TreeView {
 	 * This function clears table and requests new entity list to display.
 	 */
 	public void refresh_view () throws GLib.Error {
+		unowned Gtk.TreeSelection selection = get_selection ();
+
+		/* try to save selected */
+		Gee.Set<int> selected_set = new Gee.HashSet<int> ();
+		if (object_type.is_a (typeof (SimpleEntity))) {
+			var rows = selection.get_selected_rows (null);
+			unowned List<Gtk.TreePath> irow = rows;
+			while (irow != null) {
+				Gtk.TreeIter iter;
+				SimpleEntity entity;
+				list_store.get_iter (out iter, irow.data);
+				list_store.get (iter, 0, out entity);
+				selected_set.add (entity.id);
+				irow = irow.next;
+			}
+		}
+
 		/* unselect to prevent emitting selection events when GTK clears the list */
-		get_selection ().unselect_all ();
+		selection.unselect_all ();
 
 		Gtk.TreeIter iter;
 		list_store.clear ();
@@ -443,10 +460,13 @@ public abstract class ViewTable : Gtk.TreeView {
 		foreach (var entity in list) {
 			list_store.append (out iter);
 			refresh_row (iter, entity);
-		}
 
-		if (list_store.get_iter_first (out iter) == true)
-			get_selection ().select_iter (iter);
+			if (selected_set.size > 0) {
+				var id = ((SimpleEntity) entity).id;
+				if (selected_set.contains (id))
+					selection.select_iter (iter);
+			}
+		}
 	}
 
 
