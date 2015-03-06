@@ -18,6 +18,9 @@ namespace DB {
 
 
 public abstract class Database : Object {
+	public string stamp_table { get; construct set; }
+
+
 	public ValueAdapter value_adapter { get; set; }
 	private Gee.Map<Type, unowned EntitySpec> entity_types;
 	private Gee.Map<string, Query> query_list;
@@ -26,6 +29,9 @@ public abstract class Database : Object {
 	construct {
 		entity_types = new Gee.HashMap<Type, EntitySpec> ();
 		query_list = new Gee.HashMap<string, Query> ();
+
+		if (stamp_table == null)
+			stamp_table = "stamp";
 	}
 
 
@@ -90,6 +96,20 @@ public abstract class Database : Object {
 
 	public T? fetch_simple_entity<T> (int id, string? table = null) throws GLib.Error {
 		return fetch_simple_entity_full (typeof (T), id, table);
+	}
+
+
+	/*
+	 *	Change tracking.
+	 */
+	public bool is_table_changed (ref int stamp, string table) throws Error {
+		DB.Query query;
+		if (!get_query ("get-table-stamp", out query))
+			query.prepare ("SELECT value FROM %s WHERE name = '%s'".printf (stamp_table, table));
+		var new_stamp = query.fetch_value<int> (0);
+		var ret = stamp != new_stamp;
+		stamp = new_stamp;
+		return ret;
 	}
 
 
