@@ -190,7 +190,7 @@ public class Month {
 		if (month == null)
 			s = null;
 		else
-			s = "%d-%d".printf (month.year, month.month);
+			s = "%04d-%02d".printf (month.year, month.month);
 		return true;
 	}
 }
