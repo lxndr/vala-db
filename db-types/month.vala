@@ -51,8 +51,8 @@ public class Month {
 	}
 
 
-	public Month.from_raw_value (int _value) {
-		raw_value = _value;
+	public Month.from_integer (int _integer) {
+		raw_value = _integer;
 	}
 
 
@@ -84,12 +84,12 @@ public class Month {
 
 
 	public Month get_prev () {
-		return new Month.from_raw_value (raw_value - 1);
+		return new Month.from_integer (raw_value - 1);
 	}
 
 
 	public Month get_next () {
-		return new Month.from_raw_value (raw_value + 1);
+		return new Month.from_integer (raw_value + 1);
 	}
 
 
@@ -162,7 +162,7 @@ public class Month {
 
 
 	public string format () {
-		return "%s %u".printf (month_name (), year);
+		return "%u, %s".printf (year, month_name ());
 	}
 
 
@@ -170,10 +170,17 @@ public class Month {
 	public static bool string_to_value (ref Value v, string? s) {
 		if (unlikely (s == null))
 			return true;
+		var p = s.split ("-");
+		if (p.length < 2)
+			return false;
 
-		int result = int.parse (s);
-		var month = new Month.from_raw_value (result);
-		v.set_instance (month);
+		int64 year, month;
+		if (!int64.try_parse (p[0], out year))
+			return false;
+		if (!int64.try_parse (p[1], out month))
+			return false;
+
+		v.set_instance (new Month.from_year_month ((DateYear) year, (DateMonth) month));
 		return true;
 	}
 
@@ -183,7 +190,7 @@ public class Month {
 		if (month == null)
 			s = null;
 		else
-			s = month.raw_value.to_string ();
+			s = "%d-%d".printf (month.year, month.month);
 		return true;
 	}
 }
