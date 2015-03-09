@@ -18,22 +18,22 @@ namespace DB {
 
 
 public class Month {
-	public int raw_value { get; set; }
+	public int integer { get; set; }
 
 
 	public DateYear year {
-		get { return (DateYear) (raw_value / 12); }
+		get { return (DateYear) (integer / 12); }
 	}
 
 
 	public DateMonth month {
-		get { return (DateMonth) (raw_value % 12 + 1); }
+		get { return (DateMonth) (integer % 12 + 1); }
 	}
 
 
 	public Date? first_day {
 		owned get {
-			if (unlikely (raw_value == 0))
+			if (unlikely (integer == 0))
 				return null;
 			else
 				return new Date.from_ymd (year, month, 1);
@@ -43,7 +43,7 @@ public class Month {
 
 	public Date? last_day {
 		owned get {
-			if (unlikely (raw_value == 0))
+			if (unlikely (integer == 0))
 				return null;
 			var m = month;
 			return new Date.from_ymd (year, m, m.get_days_in_month (year));
@@ -51,45 +51,50 @@ public class Month {
 	}
 
 
+	public Month.copy (Month that) {
+		integer = that.integer;
+	}
+
+
 	public Month.from_integer (int _integer) {
-		raw_value = _integer;
+		integer = _integer;
 	}
 
 
 	public Month.from_year_month (DateYear _year, DateMonth _month) {
-		raw_value = (int) _year * 12 + (int) _month - 1;
+		integer = (int) _year * 12 + (int) _month - 1;
 	}
 
 
 	public Month.now () {
 		var date = new DateTime.now_local ();
-		raw_value = (int) date.get_year () * 12 + (int) date.get_month () - 1;
+		integer = (int) date.get_year () * 12 + (int) date.get_month () - 1;
 	}
 
 
 	public unowned Month assign (Month that) {
-		raw_value = that.raw_value;
+		integer = that.integer;
 		return this;
 	}
 
 
 	public void prev () {
-		raw_value -= 1;
+		integer -= 1;
 	}
 
 
 	public void next () {
-		raw_value += 1;
+		integer += 1;
 	}
 
 
 	public Month get_prev () {
-		return new Month.from_integer (raw_value - 1);
+		return new Month.from_integer (integer - 1);
 	}
 
 
 	public Month get_next () {
-		return new Month.from_integer (raw_value + 1);
+		return new Month.from_integer (integer + 1);
 	}
 
 
@@ -104,7 +109,7 @@ public class Month {
 
 
 	public int compare (Month _month) {
-		return raw_value - _month.raw_value;
+		return integer - _month.integer;
 	}
 
 
