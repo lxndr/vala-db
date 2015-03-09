@@ -180,9 +180,9 @@ public class Month {
 			return false;
 
 		int64 year, month;
-		if (!int64.try_parse (p[0], out year))
+		if (!int64.try_parse (remove_leading_zeros (p[0]), out year))
 			return false;
-		if (!int64.try_parse (p[1], out month))
+		if (!int64.try_parse (remove_leading_zeros (p[1]), out month))
 			return false;
 
 		v.set_instance (new Month.from_year_month ((DateYear) year, (DateMonth) month));
@@ -198,6 +198,18 @@ public class Month {
 			s = "%04d-%02d".printf (month.year, month.month);
 		return true;
 	}
+}
+
+
+private string remove_leading_zeros (string str) {
+	var len = str.length;
+	int i;
+
+	for (i = 0; i < len; i++)
+		if (str[i] != '0')
+			break;
+
+	return str[i:len];
 }
 
 
