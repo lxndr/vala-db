@@ -14,48 +14,51 @@
  */
 
 
-namespace DB {
+namespace Db {
 
 
-public class SqliteDatabase : Database {
+public class SqliteDatabase : Database, Initable {
 	public File file { get; construct set; }
 	private Sqlite.Database _native;
 
 
-	construct {
-		int ret = Sqlite.Database.open_v2 (file.get_path (), out _native);
-		if (ret != Sqlite.OK)
-			error ("Error opening the database at '%s': (%d) %s",
-					file.get_path (), _native.errcode (), _native.errmsg ());
+	public SqliteDatabase (File _file) throws GLib.Error {
+		Object (file: _file);
+		((Initable) this).init (null);
 	}
 
 
-	public SqliteDatabase (File _file) {
-		Object (file: _file);
+	private bool init (Cancellable? cancellable = null) throws GLib.Error {
+		int ret = Sqlite.Database.open_v2 (file.get_path (), out this._native);
+		if (ret != Sqlite.OK) {
+			throw new Error.NATIVE ("Error opening the database at '%s': (%d) %s",
+				file.get_path (), this._native.errcode (), this._native.errmsg ());
+		}
+
+		return true;
 	}
 
 
 	public unowned Sqlite.Database native () {
-		return _native;
+		return this._native;
 	}
 
 
-	public override int last_insert_rowid () {
-		return (int) _native.last_insert_rowid ();
+	public Error get_error () {
+		return new Error.NATIVE (this._native.errmsg ());
 	}
 
 
-	public override string? escape_string (string? s) {
-		if (s == null)
-			return null;
-		return s.replace ("'", "''");		
+	protected override Type statement_type () {
+		return typeof (SqliteStatement);
 	}
 
 
-	public override Query new_query () {
-		return new SqliteQuery (this);
+	public override int last_insert_id () {
+		return (int) this._native.last_insert_rowid ();
 	}
 }
 
 
 }
+

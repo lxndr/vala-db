@@ -14,102 +14,84 @@
  */
 
 
-namespace DB {
+namespace Db {
 
 
 public delegate void QueryCallback (Query query, Entity entity, int number);
 
 
-public abstract class Query : Object {
-	static Regex prepare_re;
-
+public class Query : Object {
+	static Regex re_names;
 	public Database db { get; construct set; }
+	private Statement statement;
 	private Gee.MultiMap<string, int> param_map;
-	public Gee.List<unowned string?> columns;
 
 
-	construct {
-		param_map = new Gee.HashMultiMap<string, int> ();
-		columns = new Gee.ArrayList<unowned string?> ();
+	static construct {
+		try {
+			re_names = new Regex (":(\\w+)", RegexCompileFlags.OPTIMIZE);
+		} catch (GLib.Error err) {
+			error ("Failed to parse command due to regexp error: %s", err.message);
+		}
 	}
 
 
-	public abstract unowned string command ();
-	protected abstract void native_prepare (string cmd) throws GLib.Error;
-	protected abstract void native_bind_text (int index, string? val);
-	protected abstract void native_bind_int (int index, int val);
-	protected abstract void native_bind_int64 (int index, int64 val);
-	protected abstract void native_bind_double (int index, double val);
-	protected abstract unowned string?[]? native_next () throws GLib.Error;
-	protected abstract void native_reset ();
+	construct {
+		this.param_map = new Gee.HashMultiMap<string, int> ();
+	}
 
 
-	public unowned Query prepare (string cmd) throws GLib.Error {
-		string prepared;
+	public Query(Database _db, Type stmt_type) {
+		Object(db: _db);
+		this.statement = (Statement) Object.new (stmt_type);
+	}
+
+
+	public unowned Query prepare (string sql) throws GLib.Error {
 		int number = 0;
 
-		try {
-			if (prepare_re == null)
-				prepare_re = new Regex (":(.+?):", RegexCompileFlags.OPTIMIZE);
+		sql = re_names.replace_eval (sql, -1, 0, 0, (match_info, result) => {
+			param_map[match_info.fetch (1)] = number;
+			result.append_c ('?');
+			number++;
+			return false;
+		});
 
-			prepared = prepare_re.replace_eval (cmd, -1, 0, 0, (match_info, result) => {
-				param_map[match_info.fetch (1)] = number;
-				result.append_c ('?');
-				number++;
-				return false;
-			});
-		} catch (RegexError e) {
-			error ("Failed to parse command due to regexp error: %s", e.message);
-		}
-
-		native_prepare (prepared);
+		this.statement.prepare (sql);
 		return this;
 	}
 
 
-	public unowned Query prepare_list (Type type) throws GLib.Error {
-		var table = db.find_entity_spec (type).table_name;
-		return prepare (@"SELECT * FROM `$(table)`");
+	public unowned string sql () {
+		return this.statement.sql ();
 	}
 
 
 	public void exec () throws GLib.Error {
-		debug ("Executing %s", command ());
-		native_next ();
+		debug ("Executing %s", this.sql ());
+		this.statement.exec ();
 	}
 
 
-	public void bind<T> (string name, T val) {
-		var list = param_map[name];
+	public void bind<T> (string name, T val) throws GLib.Error {
+		var list = this.param_map[name];
 
 		if (list.size == 0)
-			error ("Could not find query parameter '%s'", name);
+			throw new Error.GENERIC ("Could not find query parameter '%s'", name);
 
 		var type = typeof (T);
 		foreach (var index in list) {
-			if (type == typeof (bool) || type == typeof (char) || type == typeof (uchar)
-					|| type == typeof (int) || type == typeof (uint))
-				native_bind_int (index, (int) val);
-			else if (type == typeof (int64))
-				native_bind_int64 (index, (int64) val);
-			else if (type == typeof (uint64))
-				native_bind_int64 (index, (int64) val);
-/*			else if (type == typeof (float))
-				native_bind_double (index, (double) (float) (int) val);
-			else if (type == typeof (double))
-				native_bind_double (index, (double) val);*/
-			else if (type == typeof (string))
-				native_bind_text (index, (string?) val);
-			else if (val == null)
-				native_bind_text (index, null);
-			else if (type.is_a (typeof (SimpleEntity)))
-				native_bind_int (index, ((SimpleEntity) val).id);
-			else {
+			if (this.statement.bind<T> (index, val))
+				continue;
+
+			if (type.is_a (typeof (SimpleEntity))) {
+				this.statement.bind<int> (index, ((SimpleEntity) val).id);
+			} else {
 				string? s;
 				var v = Value (typeof (T));
 				v.set_instance (val);
-				if (db.value_adapter.convert_to (out s, ref v, null, null))
-					native_bind_text (index, s);
+				if (this.db.value_adapter.convert_to (out s, ref v, null, null))
+					this.statement.bind<string> (index, s);
 				else
 					error ("Could not bind query parameter '%s', of type '%s'", name, type.name ());
 			}
@@ -117,53 +99,17 @@ public abstract class Query : Object {
 	}
 
 
+	/**
+	 *
+	 */
 	public void bind_value (string name, ref Value val) {
-		var list = param_map[name];
 
-		if (list.size == 0)
-			error ("Could not find query parameter '%s'", name);
-
-		foreach (var index in list)
-			bind_value_index (index, ref val);	
 	}
 
 
-	public void bind_value_index (int index, ref Value val) {
-		var type = val.type ();
-
-		if (type == typeof (char))
-			native_bind_int (index, (int) val.get_schar ());
-		else if (type == typeof (uchar))
-			native_bind_int (index, (int) val.get_uchar ());
-		else if (type == typeof (int))
-			native_bind_int (index, (int) val.get_int ());
-		else if (type == typeof (uint))
-			native_bind_int (index, (int) val.get_uint ());
-		else if (type == typeof (int64))
-			native_bind_int64 (index, (int64) val.get_int64 ());
-		else if (type == typeof (uint64))
-			native_bind_int64 (index, (int64) val.get_uint64 ());
-		else if (type == typeof (bool))
-			native_bind_int (index, (int) val.get_boolean ());
-		else if (type == typeof (float))
-			native_bind_double (index, (double) val.get_float ());
-		else if (type == typeof (double))
-			native_bind_double (index, (double) val.get_double ());
-		else if (type == typeof (string))
-			native_bind_text (index, val.get_string ());
-		else if (type.is_a (typeof (SimpleEntity))) {
-			var entity = (SimpleEntity) val.get_object ();
-			if (entity != null)
-				native_bind_int (index, entity.id);
-			else
-				native_bind_text (index, null);
-		} else {
-			string? s;
-			if (db.value_adapter.convert_to (out s, ref val, null, null))
-				native_bind_text (index, s);
-			else
-				error ("Could not bind query parameter of type '%s'", type.name ());
-		}
+	public unowned Query prepare_list (Type type) throws GLib.Error {
+		var table = this.db.find_entity_spec (type).table_name;
+		return this.prepare (@"SELECT * FROM `$(table)`");
 	}
 
 
@@ -194,7 +140,6 @@ public abstract class Query : Object {
 	}
 
 
-
 	/*
 	 * Selection.
 	 */
@@ -202,12 +147,11 @@ public abstract class Query : Object {
 			Cancellable? cancellable = null) throws GLib.Error {
 		var list = new Gee.ArrayList<Entity> ();
 
-		while (!cancellable.is_cancelled ()) {
-			unowned string?[]? values = native_next ();
-			if (values == null)
+		foreach (var values in this.statement) {
+			if (cancellable.is_cancelled ())
 				break;
 
-			var entity = make_entity_full (type, values);
+			var entity = this.make_entity_full (type, values);
 			list.add (entity);
 
 			if (callback != null)
@@ -251,13 +195,12 @@ public abstract class Query : Object {
 	public Gee.List<T> fetch_value_list<T> (QueryCallback? callback = null, Cancellable? cancellable = null) throws GLib.Error {
 		var list = new Gee.ArrayList<T> ();
 
-		while (!cancellable.is_cancelled ()) {
-			var values = native_next ();
-			if (values == null)
+		foreach (var values in this.statement) {
+			if (cancellable.is_cancelled ())
 				break;
 
 			var val = Value (typeof(T));
-			if (!assemble_value (ref val, values[0]))
+			if (!this.assemble_value (ref val, values[0]))
 				warning ("-");
 			list.add (wrap_value<T> (ref val));
 		}
@@ -266,29 +209,25 @@ public abstract class Query : Object {
 	}
 
 
+	/**
+	 *
+	 */
 	public Gee.Map<K, T> fetch_entity_map<K, T> (string key_field,
 			QueryCallback? callback = null, Cancellable? cancellable = null) throws GLib.Error {
-		int key_column = -1;
+		int key_column = this.statement.columns.index_of (key_field);
+		if (key_column == -1)
+			throw new Error.GENERIC (@"Doesn't have column '$(key_field)'");
 
 		var map = new Gee.HashMap<K, T> ();
-		while (!cancellable.is_cancelled ()) {
-			var values = native_next ();
-			if (values == null)
+		foreach (var values in this.statement) {
+			if (cancellable.is_cancelled ())
 				break;
 
-			if (key_column == -1) {
-				for (var i = 0; i < columns.size; i++)
-					if (columns[i] == key_field)
-						key_column = i;
-				if (key_column == -1)
-					error (@"Doesn't have column '$(key_field)'");
-			}
-
 			var key_value = Value (typeof (K));
-			assemble_value (ref key_value, values[key_column]);
-			var key = wrap_value<K> (ref key_value);
+			this.assemble_value (ref key_value, values[key_column]);
+			var key = this.wrap_value<K> (ref key_value);
 
-			var val = make_entity<T> (values);
+			var val = this.make_entity<T> (values);
 			map[key] = val;
 		}
 
@@ -296,20 +235,22 @@ public abstract class Query : Object {
 	}
 
 
+	/**
+	 *
+	 */
 	public Gee.Map<K, V> fetch_value_map<K, V> (QueryCallback? callback = null, Cancellable? cancellable = null) throws GLib.Error {
 		var map = new Gee.HashMap<K, V> ();
-		while (!cancellable.is_cancelled ()) {
-			var values = native_next ();
-			if (values == null)
+		foreach (var values in this.statement) {
+			if (cancellable.is_cancelled ())
 				break;
 
 			var key_value = Value (typeof (K));
-			assemble_value (ref key_value, values[0]);
-			var key = wrap_value<K> (ref key_value);
+			this.assemble_value (ref key_value, values[0]);
+			var key = this.wrap_value<K> (ref key_value);
 
 			var val_value = Value (typeof (V));
-			assemble_value (ref val_value, values[1]);
-			var val = wrap_value<V> (ref val_value);
+			this.assemble_value (ref val_value, values[1]);
+			var val = this.wrap_value<V> (ref val_value);
 
 			map[key] = val;
 		}
@@ -331,12 +272,13 @@ public abstract class Query : Object {
 	 *     - if property is string, copies it;
 	 *     - if property is something else, tries to convert it via g_value_transform.
 	 */
-	private void prepare_entity (Entity ent, string[] values) throws GLib.Error {
+	private void prepare_entity (Entity ent, Gee.List<string?> values) throws GLib.Error {
 		var type = ent.get_type ();
 		var obj_class = (ObjectClass) type.class_ref ();
+		unowned Gee.List<unowned string> columns = this.statement.columns;
 
-		for (var i = 0; i < columns.size; i++) {
-			unowned string? val = values[i];
+		for (var i = 0; i < this.statement.columns.size; i++) {
+			var val = values[i];
 			unowned string prop_name = columns[i];
 			var prop = obj_class.find_property (prop_name);
 			if (prop == null)
@@ -419,15 +361,15 @@ public abstract class Query : Object {
 	}
 
 
-	public Entity make_entity_full (Type type, string[] values) throws GLib.Error {
+	public Entity make_entity_full (Type type, Gee.List<string?> values) throws GLib.Error {
 		var ent = Object.new (type, "db", db) as Entity;
-		prepare_entity (ent, values);
+		this.prepare_entity (ent, values);
 		return ent;
 	}
 
 
-	public T make_entity<T> (string[] values) throws GLib.Error {
-		return make_entity_full (typeof (T), values);
+	public T make_entity<T> (Gee.List<string?> values) throws GLib.Error {
+		return this.make_entity_full (typeof (T), values);
 	}
 }
 

@@ -14,7 +14,7 @@
  */
 
 
-namespace DB {
+namespace Db {
 
 
 public interface Viewable : Object{

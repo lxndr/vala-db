@@ -14,7 +14,7 @@
  */
 
 
-namespace DB {
+namespace Db {
 
 
 public abstract class SimpleEntity : Entity {
@@ -36,7 +36,7 @@ public abstract class SimpleEntity : Entity {
 
 	public override void persist () throws GLib.Error {
 		unowned string tbl_name = db_table ();
-		DB.Query query;
+		Db.Query query;
 
 		if (id == 0) {
 			if (!db.get_query (@"$(tbl_name)-insert", out query)) {
@@ -49,14 +49,14 @@ public abstract class SimpleEntity : Entity {
 
 			bind_properties (query, db_fields ());
 			query.exec ();
-			id = db.last_insert_rowid ();
+			id = db.last_insert_id ();
 		} else {
 			if (!db.get_query (@"$(tbl_name)-update", out query)) {
 				var sb = new StringBuilder ();
 				foreach (unowned string prop_name in db_fields ())
 					sb.append_printf ("`%s` = :%s:, ", prop_name, prop_name);
 				sb.truncate (sb.len - 2);
-				query.prepare (@"UPDATE `$(tbl_name)` SET $(sb.str) WHERE id = :id:");
+				query.prepare (@"UPDATE `$(tbl_name)` SET $(sb.str) WHERE id = :id");
 			}
 
 			bind_properties (query, db_fields ());

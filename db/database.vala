@@ -14,7 +14,7 @@
  */
 
 
-namespace DB {
+namespace Db {
 
 
 public abstract class Database : Object {
@@ -27,21 +27,20 @@ public abstract class Database : Object {
 
 
 	construct {
-		entity_types = new Gee.HashMap<Type, EntitySpec> ();
-		query_list = new Gee.HashMap<string, Query> ();
+		this.entity_types = new Gee.HashMap<Type, EntitySpec> ();
+		this.query_list = new Gee.HashMap<string, Query> ();
 
-		if (stamp_table == null)
-			stamp_table = "stamp";
+		if (this.stamp_table == null)
+			this.stamp_table = "stamp";
 	}
 
 
-	public abstract Query new_query ();
-	public abstract int last_insert_rowid ();
-	public abstract string? escape_string (string? s);
+	protected abstract Type statement_type ();
+	public abstract int last_insert_id ();
 
 
-	/*
-	 * Entity specs registry.
+	/**
+	 * Register entity type.
 	 */
 	public unowned EntitySpec register_entity_type (Type type, string table_name) {
 		entity_types[type] = new EntitySpec (type, table_name);
@@ -49,6 +48,9 @@ public abstract class Database : Object {
 	}
 
 
+  /**
+   * Unregister entity type.
+   */
 	public void unregister_entity_type (Type type) {
 		entity_types.unset (type);
 	}
@@ -61,7 +63,15 @@ public abstract class Database : Object {
 	}
 
 
-	public bool get_query (string name, out Query query) {
+	public Query new_query (string? sql = null) throws GLib.Error {
+		var query = new Query (this, this.statement_type ());
+		if (sql != null)
+			query.prepare (sql);
+		return query;
+	}
+
+
+	public bool get_query (string name, out Query query) throws GLib.Error {
 		query = query_list[name];
 		if (query == null) {
 			query = new_query ();
@@ -102,8 +112,8 @@ public abstract class Database : Object {
 	/*
 	 *	Change tracking.
 	 */
-	public bool is_table_changed (ref int stamp, string table) throws Error {
-		DB.Query query;
+	public bool is_table_changed (ref int stamp, string table) throws GLib.Error {
+		Db.Query query;
 		if (!get_query ("get-table-stamp", out query))
 			query.prepare ("SELECT value FROM %s WHERE name = '%s'".printf (stamp_table, table));
 		var new_stamp = query.fetch_value<int> (0);
@@ -113,24 +123,34 @@ public abstract class Database : Object {
 	}
 
 
+	public virtual string? escape_string (string? s) {
+		if (s == null)
+			return null;
+		return s.replace ("'", "''");
+	}
+
+
 	/*
-	 *	Transaction control.
+	 * Begin transaction.
 	 */
-	public void begin_transaction () throws GLib.Error {
-		var query = new_query ();
-		query.prepare ("BEGIN TRANSACTION").exec ();
+	public virtual void begin_transaction () throws GLib.Error {
+		new_query ("BEGIN TRANSACTION").exec ();
 	}
 
 
-	public void commit_transaction () throws GLib.Error {
-		var query = new_query ();
-		query.prepare ("COMMIT TRANSACTION").exec ();
+	/*
+	 * Commit.
+	 */
+	public virtual void commit () throws GLib.Error {
+		new_query ("COMMIT").exec ();
 	}
 
 
-	public void rollback_transaction () throws GLib.Error {
-		var query = new_query ();
-		query.prepare ("ROLLBACK TRANSACTION").exec ();
+	/*
+	 * Rollback.
+	 */
+	public virtual void rollback () throws GLib.Error {
+		new_query ("ROLLBACK").exec ();
 	}
 }
 

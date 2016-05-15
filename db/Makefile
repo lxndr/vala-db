@@ -1,12 +1,14 @@
-NAME = db
 include ../common.mk
+NAME = db
 TARGET = $(LIB_DIR)/$(NAME).$(LIBEXT)
+OUTDIR = $(BUILD_DIR)/$(NAME)
 
 
 PACKAGES = \
-	--pkg=gio-2.0 \
-	--pkg=gee-0.8 \
-	--pkg=sqlite3
+	gio-2.0 \
+	gee-0.8 \
+	sqlite3 \
+	mysql
 
 
 all: $(TARGET)
@@ -14,21 +16,22 @@ all: $(TARGET)
 
 
 $(TARGET): *.vala
-	rm -rf $(_BUILD_DIR)
-	mkdir -p $(_BUILD_DIR)
+	$(call print_target,"Building target 'db'")
+	rm -rf $(OUTDIR)
+	mkdir -p $(OUTDIR)
 	mkdir -p $(INCLUDE_DIR)
 	mkdir -p $(VAPI_DIR)
 	mkdir -p $(LIB_DIR)
-	cd $(_BUILD_DIR) && \
-		valac $(FLAGS) $(PACKAGES) --library=$(NAME) --use-header --header=$(NAME).h --compile $(CURDIR)/*.vala && \
+	cd $(OUTDIR) && \
+		valac $(FLAGS) $(foreach pkg,$(PACKAGES),--pkg=$(pkg)) --library=$(NAME) --use-header --header=$(NAME).h --vapi-comments --compile $(CURDIR)/*.vala && \
 		$(AR) rcs $(TARGET) *.o
-	mv $(_BUILD_DIR)/$(NAME).h $(INCLUDE_DIR)
-	mv $(_BUILD_DIR)/$(NAME).vapi $(VAPI_DIR)
-	rm -f $(_BUILD_DIR)/*.o
+	mv $(OUTDIR)/$(NAME).h $(INCLUDE_DIR)
+	mv $(OUTDIR)/$(NAME).vapi $(VAPI_DIR)
+	rm -f $(BUILD_DIR)/*.o
 
 
 clean:
-	rm -rf $(_BUILD_DIR)
+	rm -rf $(OUTDIR)
 	rm -f $(VAPI_DIR)/$(NAME).vapi
 	rm -f $(INCLUDE_DIR)/$(NAME).h
 	rm -f $(TARGET)

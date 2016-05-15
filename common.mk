@@ -38,5 +38,12 @@ else
 endif
 
 
-_BUILD_DIR = $(BUILD_DIR)/$(NAME)
+define add_directory
+	$(MAKE) -C $(1)
+endef
+
+
+define print_target
+	@echo -e "\033[0;33m$(1)\033[0m"
+endef
 

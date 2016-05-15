@@ -1,3 +1,5 @@
+include ./common.mk
+
 ifndef BUILD_DIR
 	export BUILD_DIR=$(CURDIR)/build
 endif
@@ -8,9 +10,8 @@ export LIB_DIR=$(BUILD_DIR)/lib
 
 
 all:
-	$(MAKE) -C db
-	$(MAKE) -C db-gtk
-	$(MAKE) -C db-types
+	$(call add_directory, db)
+	$(call add_directory, db-gtk)
 
 
 clean:

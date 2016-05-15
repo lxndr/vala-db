@@ -14,7 +14,7 @@
  */
 
 
-namespace DB {
+namespace Db {
 
 
 [Compact]
@@ -531,10 +531,10 @@ public abstract class ViewTable : Gtk.TreeView {
 	}
 
 
-	protected bool find_row (out Gtk.TreeIter iter, DB.Entity entity) {
+	protected bool find_row (out Gtk.TreeIter iter, Entity entity) {
 		if (list_store.get_iter_first (out iter) == true) {
 			do {
-				DB.Entity ent;
+				Entity ent;
 				list_store.get (iter, 0, out ent);
 				if (ent == entity)
 					return true;
@@ -545,7 +545,7 @@ public abstract class ViewTable : Gtk.TreeView {
 	}
 
 
-	public void find_and_refresh_row (DB.Entity entity) {
+	public void find_and_refresh_row (Entity entity) {
 		Gtk.TreeIter iter;
 		if (find_row (out iter, entity) == true)
 			refresh_row (iter, entity);

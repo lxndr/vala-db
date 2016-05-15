@@ -14,7 +14,7 @@
  */
 
 
-namespace DB {
+namespace Db {
 
 
 public delegate bool ValueAdapterFromFunc (ref Value v, string? s);

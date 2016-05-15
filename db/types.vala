@@ -14,10 +14,11 @@
  */
 
 
-namespace DB {
+namespace Db {
 
 
 public errordomain Error {
+	GENERIC,
 	LOCKED,
 	NATIVE
 }

@@ -14,7 +14,7 @@
  */
 
 
-namespace DB {
+namespace Db {
 
 
 public abstract class Entity : Object {
@@ -31,7 +31,7 @@ public abstract class Entity : Object {
 
 
 	public virtual void remove () throws GLib.Error {
-		DB.Query query;
+		Query query;
 
 		if (db_keys ().length == 0) {
 			warning (@"Cannot delete entity $(get_type ()) that does not have primary key");
@@ -40,20 +40,20 @@ public abstract class Entity : Object {
 
 		unowned string tbl_name = db_table ();
 		if (!db.get_query (@"$(tbl_name)-delete", out query)) {
-			var builder = new DB.QueryBuilder ();
+			var builder = new QueryBuilder ();
 			builder.delete (tbl_name);
 			foreach (unowned string prop_name in db_keys ())
 				builder.where (@"$(prop_name) = :$(prop_name):");
 			query.prepare (builder.done ());
 		}
 
-		bind_properties (query, db_keys ());
+		this.bind_properties (query, db_keys ());
 		query.exec ();
 	}
 
 
 	public virtual void persist () throws GLib.Error {
-		DB.Query query;
+		Db.Query query;
 
 		unowned string tbl_name = db_table ();
 		if (!db.get_query (@"$(tbl_name)-replace", out query)) {
@@ -66,8 +66,8 @@ public abstract class Entity : Object {
 			query.prepare (@"REPLACE INTO `$(tbl_name)` VALUES ($(sb.str))");
 		}
 
-		bind_properties (query, db_keys ());
-		bind_properties (query, db_fields ());
+		this.bind_properties (query, db_keys ());
+		this.bind_properties (query, db_fields ());
 		query.exec ();
 	}
 
