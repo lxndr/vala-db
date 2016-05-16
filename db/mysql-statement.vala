@@ -1,12 +1,14 @@
 namespace Db {
 
 
-public class MysqlStatement : Statement {
+private class MysqlStatement : Statement {
 	private string _sql;
 
 
-	public override unowned string sql () {
-		return this._sql;
+	public override unowned string? sql {
+		get {
+			return this._sql;
+		}
 	}
 
 

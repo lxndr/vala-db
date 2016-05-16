@@ -71,6 +71,9 @@ public abstract class Database : Object {
 	}
 
 
+	/**
+	 * 
+	 */
 	public bool get_query (string name, out Query query) throws GLib.Error {
 		query = query_list[name];
 		if (query == null) {
@@ -83,6 +86,9 @@ public abstract class Database : Object {
 	}
 
 
+	/**
+	 * 
+	 */
 	public int query_count (string from, string where) throws GLib.Error {
 		var q = new_query ();
 		q.prepare (@"SELECT COUNT(*) FROM $(from) WHERE $(where)");
@@ -90,11 +96,17 @@ public abstract class Database : Object {
 	}
 
 
+	/**
+	 * Fetch simple entity by id.
+	 * @param type of the entity to create.
+	 * @param id of the entity to fetch from the database.
+	 * @param table to query.
+	 */
 	public Entity? fetch_simple_entity_full (Type type, int id, string? table = null) throws GLib.Error {
 		if (table == null) {
 			unowned EntitySpec? spec = find_entity_spec (type);
 			if (spec == null)
-				error ("Could not find spec for '%s'", type.name ());
+				throw new Error.GENERIC ("Could not find spec for '%s'", type.name ());
 			table = spec.table_name;
 		}
 
@@ -104,6 +116,11 @@ public abstract class Database : Object {
 	}
 
 
+	/**
+	 * Fetch simple entity by id. Template version.
+	 * @param id of the entity to fetch from the database.
+	 * @param table to query.
+	 */
 	public T? fetch_simple_entity<T> (int id, string? table = null) throws GLib.Error {
 		return fetch_simple_entity_full (typeof (T), id, table);
 	}
@@ -130,7 +147,7 @@ public abstract class Database : Object {
 	}
 
 
-	/*
+	/**
 	 * Begin transaction.
 	 */
 	public virtual void begin_transaction () throws GLib.Error {
@@ -138,7 +155,7 @@ public abstract class Database : Object {
 	}
 
 
-	/*
+	/**
 	 * Commit.
 	 */
 	public virtual void commit () throws GLib.Error {
@@ -146,7 +163,7 @@ public abstract class Database : Object {
 	}
 
 
-	/*
+	/**
 	 * Rollback.
 	 */
 	public virtual void rollback () throws GLib.Error {

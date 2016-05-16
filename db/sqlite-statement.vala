@@ -63,8 +63,6 @@ private class Iterator : Object, Gee.Iterator<Gee.List<string?>>, Gee.Traversabl
 			if (!f (row))
 				return false;
 		}
-
-		return true;
 	}
 
 
@@ -74,7 +72,7 @@ private class Iterator : Object, Gee.Iterator<Gee.List<string?>>, Gee.Traversabl
 }
 
 
-public class SqliteStatement : Statement, Gee.Iterable<Gee.List<string>> {
+private class SqliteStatement : Statement, Gee.Iterable<Gee.List<string?>> {
 	private Sqlite.Statement native;
 
 
@@ -83,17 +81,20 @@ public class SqliteStatement : Statement, Gee.Iterable<Gee.List<string>> {
 	}
 
 
-	public override unowned string sql () {
-		return this.native.sql ();
+	public override unowned string? sql {
+		get {
+			return this.native == null ? null : this.native.sql ();
+		}
 	}
 
 
-	public override void prepare (string sql) throws Error {
+	public override void prepare (string sql) throws GLib.Error {
 		unowned SqliteDatabase db = (SqliteDatabase) this.db;
 
 		if (db.native ().prepare_v2 (sql, sql.length, out this.native) != Sqlite.OK)
 		  throw db.get_error ();
 
+		this.columns.clear ();
 		var count = this.native.column_count ();
 		for (var i = 0; i < count; i++)
 		  this.columns.add (this.native.column_name (i));
@@ -124,12 +125,15 @@ public class SqliteStatement : Statement, Gee.Iterable<Gee.List<string>> {
 
 
 	public override void exec () throws GLib.Error {
-		this.native.reset ();
-		this.native.step ();
+		unowned SqliteDatabase db = (SqliteDatabase) this.db;
+		if (this.native.reset () != Sqlite.OK)
+			throw db.get_error ();
+		if (this.native.step () != Sqlite.OK)
+			throw db.get_error ();
 	}
 
 
-	public override Gee.Iterator<Gee.List<string>> iterator () {
+	public override Gee.Iterator<Gee.List<string?>> iterator () {
 		return new Iterator (this.native);
 	}
 }

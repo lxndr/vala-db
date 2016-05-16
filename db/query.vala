@@ -63,7 +63,7 @@ public class Query : Object {
 
 
 	public unowned string sql () {
-		return this.statement.sql ();
+		return this.statement.sql;
 	}
 
 
