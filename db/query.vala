@@ -21,7 +21,7 @@ public delegate void QueryCallback (Query query, Entity entity, int number);
 
 
 public class Query : Object {
-	static Regex re_names;
+	static Regex re_params;
 	public Database db { get; construct set; }
 	private Statement statement;
 	private Gee.MultiMap<string, int> param_map;
@@ -29,7 +29,7 @@ public class Query : Object {
 
 	static construct {
 		try {
-			re_names = new Regex (":(\\w+)", RegexCompileFlags.OPTIMIZE);
+			re_params = new Regex (":(\\w+)", RegexCompileFlags.OPTIMIZE);
 		} catch (GLib.Error err) {
 			error ("Failed to parse command due to regexp error: %s", err.message);
 		}
@@ -50,7 +50,7 @@ public class Query : Object {
 	public unowned Query prepare (string sql) throws GLib.Error {
 		int number = 0;
 
-		sql = re_names.replace_eval (sql, -1, 0, 0, (match_info, result) => {
+		sql = re_params.replace_eval (sql, -1, 0, 0, (match_info, result) => {
 			param_map[match_info.fetch (1)] = number;
 			result.append_c ('?');
 			number++;
@@ -59,6 +59,15 @@ public class Query : Object {
 
 		this.statement.prepare (sql);
 		return this;
+	}
+
+
+	/**
+	 * Creates select query.
+	 */
+	public unowned Query prepare_list (Type type) throws GLib.Error {
+		var table = this.db.find_entity_spec (type).table_name;
+		return this.prepare (@"SELECT * FROM `$(table)`");
 	}
 
 
@@ -73,7 +82,7 @@ public class Query : Object {
 	}
 
 
-	public void bind<T> (string name, T val) throws GLib.Error {
+	public unowned Query bind<T> (string name, T val) throws GLib.Error {
 		var list = this.param_map[name];
 
 		if (list.size == 0)
@@ -93,23 +102,19 @@ public class Query : Object {
 				if (this.db.value_adapter.convert_to (out s, ref v, null, null))
 					this.statement.bind<string> (index, s);
 				else
-					error ("Could not bind query parameter '%s', of type '%s'", name, type.name ());
+					throw new Error.GENERIC ("Could not bind query parameter '%s', of type '%s'", name, type.name ());
 			}
 		}
+
+		return this;
 	}
 
 
 	/**
 	 *
 	 */
-	public void bind_value (string name, ref Value val) {
-
-	}
-
-
-	public unowned Query prepare_list (Type type) throws GLib.Error {
-		var table = this.db.find_entity_spec (type).table_name;
-		return this.prepare (@"SELECT * FROM `$(table)`");
+	public unowned Query bind_value (string name, ref Value val) {
+		return this;
 	}
 
 
@@ -163,12 +168,12 @@ public class Query : Object {
 
 
 	public Gee.List<T> fetch_entity_list<T> (QueryCallback? callback = null, Cancellable? cancellable = null) throws GLib.Error {
-		return fetch_entity_list_full (typeof (T), callback);
+		return this.fetch_entity_list_full (typeof (T), callback);
 	}
 
 
 	public Entity? fetch_entity_full (Type type) throws GLib.Error {
-		var list = fetch_entity_list_full (type);
+		var list = this.fetch_entity_list_full (type);
 		if (list.size > 0)
 			return list[0];
 		return null;
@@ -181,7 +186,7 @@ public class Query : Object {
 
 
 	public T fetch_value<T> (T def) throws GLib.Error {
-		var list = fetch_value_list<T> ();
+		var list = this.fetch_value_list<T> ();
 		if (list.size > 0)
 			return list[0];
 		return def;
@@ -190,7 +195,6 @@ public class Query : Object {
 
 	/**
 	 * @brief Fetch a list of values of type @T.
-	 * @query The query.
 	 */
 	public Gee.List<T> fetch_value_list<T> (QueryCallback? callback = null, Cancellable? cancellable = null) throws GLib.Error {
 		var list = new Gee.ArrayList<T> ();
